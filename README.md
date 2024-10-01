@@ -1,5 +1,6 @@
 ## 插件说明
-基于 cogview-3-plus 提供的生图功能。地址: [[https://open.bigmodel.cn/console/trialcenter](https://open.bigmodel.cn/console/trialcenter)]，注册有2000次免费生图或视频机会。
+基于智谱提供的AI绘画及视频功能。
+地址: [[https://open.bigmodel.cn/usercenter/apikeys](https://open.bigmodel.cn/usercenter/apikeys)]，注册有2000次免费生图或视频机会。
 
 ## 插件安装
 
