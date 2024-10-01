@@ -23,15 +23,18 @@
     "video_result_url": "https://open.bigmodel.cn/api/paas/v4/async-result/{id}", #不用改
     "image_model": "cogview-3-plus",                                              #不用改
     "video_model": "cogvideox",                                                   #不用改
-    "translate_api_url": "https://api.siliconflow.cn/v1/chat/completions",        #使用LLM的交互地址
-    "translate_api_key": "your_translate_api_key",                                #LLM的API KEY
-    "translate_model": "Qwen/Qwen2.5-7B-Instruct",                                #LLM使用的模型
+    "enhance_prompt_api_url": "https://api.siliconflow.cn/v1/chat/completions",   #使用LLM的交互地址
+    "enhance_prompt_api_key": "your_translate_api_key",                           #LLM的API KEY
+    "enhance_model": "Qwen/Qwen2.5-7B-Instruct",                                  #LLM使用的模型
+    "sys_image_gen": "",                                                          #图像增强提示词
+    "sys_video_gen": "",                                                          #视频增强提示词
     "storage_path": "/root/chatgpt-on-wechat/plugins/CogView2Cow/image_video",    #存储路径
     "cleanup_days": 3,                                                            #不用改
     "cleanup_check_interval_minutes": 1440,                                       #不用改
     "image_command": "智谱画图",                                                   #触发画图
     "video_command": "智谱视频",                                                   #触发视频
     "query_command": "查询进度"                                                    #触发进度查询+使用时添加ID
+    "daily_usage_limit": 5                                                        #每日限制次数
 }
 
 ```
