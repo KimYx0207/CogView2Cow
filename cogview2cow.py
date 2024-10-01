@@ -5,6 +5,7 @@ import os
 import threading
 import time
 from io import BytesIO
+from datetime import datetime, timedelta
 import plugins
 from plugins import *
 from bridge.context import ContextType, Context
@@ -14,7 +15,7 @@ from channel.wechat.wechat_channel import WechatChannel
 
 @plugins.register(name="cogview2cow",
                   desc="CogView画图插件",
-                  version="1.0",
+                  version="1.1",
                   author="KimYx 微信：xun900207（备注AI）",
                   desire_priority=100)
 class CogView2Cow(Plugin):
@@ -135,51 +136,54 @@ class CogView2Cow(Plugin):
 
     def handle_query(self, e_context, user_id):
         # 实现查询逻辑，例如查询用户的任务状态
+        # 这里简单返回任务状态
         reply = Reply()
         reply.type = ReplyType.TEXT
-        reply.content = "查询功能尚未实现。"
+        user_tasks = [task_id for task_id, info in self.video_tasks.items() if info['user_id'] == user_id]
+        if user_tasks:
+            status_messages = []
+            for task_id in user_tasks:
+                status = self.video_tasks[task_id]['status']
+                status_messages.append(f"任务ID: {task_id}, 状态: {status}")
+            reply.content = "\n".join(status_messages)
+        else:
+            reply.content = "您目前没有正在进行的任务。"
         e_context["reply"] = reply
         e_context.action = EventAction.BREAK_PASS
 
-    def enhance_prompt(self, prompt, is_video=False):
+    def translate_prompt(self, prompt):
         if not self.load_config():
-            return None
+            return prompt
 
-        enhance_prompt_api_url = self.config_data.get('enhance_prompt_api_url', '')
-        enhance_prompt_api_key = self.config_data.get('enhance_prompt_api_key', '')
-        enhance_model = self.config_data.get('enhance_model', '')
+        translate_api_url = self.config_data.get('translate_api_url', '')
+        translate_api_key = self.config_data.get('translate_api_key', '')
+        translate_model = self.config_data.get('translate_model', '')
 
         headers = {
             "Content-Type": "application/json",
-            "Authorization": f"Bearer {enhance_prompt_api_key}"
+            "Authorization": f"Bearer {translate_api_key}"
         }
-
-        # 根据请求类型选择对应的系统提示词
-        if is_video:
-            sys_prompt = self.config_data.get('sys_video_gen', '')
-        else:
-            sys_prompt = self.config_data.get('sys_image_gen', '')
 
         # 构建请求的 payload
         payload = {
-            "model": enhance_model,
+            "model": translate_model,
             "messages": [
-                {"role": "system", "content": sys_prompt},
+                {"role": "system", "content": "请将以下内容翻译成英文："},
                 {"role": "user", "content": prompt}
             ],
             "max_tokens": 1000
         }
 
         try:
-            response = requests.post(enhance_prompt_api_url, json=payload, headers=headers)
+            response = requests.post(translate_api_url, json=payload, headers=headers)
             response.raise_for_status()
             response_data = response.json()
-            enhanced_prompt = response_data.get('choices', [{}])[0].get('message', {}).get('content', '')
-            logger.info(f"强化后的提示词: {enhanced_prompt}")
-            return enhanced_prompt.strip()
+            translated_prompt = response_data.get('choices', [{}])[0].get('message', {}).get('content', '')
+            logger.info(f"翻译后的提示词: {translated_prompt}")
+            return translated_prompt.strip()
         except Exception as e:
-            logger.error(f"强化提示词接口抛出异常: {e}")
-            return None
+            logger.error(f"翻译接口抛出异常: {e}")
+            return prompt
 
     def extract_image_size(self, prompt: str) -> (str, str):
         match = re.search(r'--ar (\d+:\d+)', prompt)
@@ -208,14 +212,14 @@ class CogView2Cow(Plugin):
             prompt = self.content[len(self.image_command):].strip()
             # 提取图片尺寸
             size, prompt = self.extract_image_size(prompt)
-            # 使用强化提示词LLM增强提示词
-            enhanced_prompt = self.enhance_prompt(prompt, is_video=False)
-            if not enhanced_prompt:
+            # 翻译提示词
+            translated_prompt = self.translate_prompt(prompt)
+            if not translated_prompt:
                 return None, None
 
             payload = {
                 "model": image_model,
-                "prompt": enhanced_prompt,
+                "prompt": translated_prompt,
             }
             # 只有 cogview-3-plus 支持 size 参数
             if image_model == "cogview-3-plus" and size:
@@ -242,7 +246,7 @@ class CogView2Cow(Plugin):
             with open(img_path, 'wb') as handler:
                 handler.write(img_data)
             logger.info(f"图片已保存到: {img_path}")
-            return img_path, enhanced_prompt  # 返回图片的文件路径和强化后的提示词
+            return img_path, translated_prompt  # 返回图片的文件路径和翻译后的提示词
         except Exception as e:
             logger.error(f"接口抛出异常: {e}")
             return None, None
@@ -260,14 +264,14 @@ class CogView2Cow(Plugin):
         try:
             # 去掉触发词前缀
             prompt = self.content[len(self.video_command):].strip()
-            # 使用强化提示词LLM增强提示词
-            enhanced_prompt = self.enhance_prompt(prompt, is_video=True)
-            if not enhanced_prompt:
+            # 翻译提示词
+            translated_prompt = self.translate_prompt(prompt)
+            if not translated_prompt:
                 return None, None
 
             payload = {
                 "model": video_model,
-                "prompt": enhanced_prompt,
+                "prompt": translated_prompt,
                 "user_id": user_id  # 传入用户ID
             }
             headers = {
@@ -282,7 +286,7 @@ class CogView2Cow(Plugin):
             logger.info(response_data)
 
             if 'id' in response_data:
-                return response_data, enhanced_prompt  # 返回响应和强化后的提示词
+                return response_data, translated_prompt  # 返回响应和翻译后的提示词
             else:
                 logger.error("API 响应不包含 id: " + str(response_data))
                 return None, None
@@ -297,13 +301,13 @@ class CogView2Cow(Plugin):
         self.send_message(context, reply)
 
     def send_message(self, context, reply):
-        # 手动复制必要的属性
+        # 手动复制必要的属性，使用字典方式访问
         new_context = Context()
-        new_context['session_id'] = context.get('session_id')
-        new_context['isgroup'] = context.get('isgroup')
-        new_context['receiver'] = context.get('receiver')
-        new_context.content = reply.content
-        new_context.type = ContextType.TEXT if reply.type == ReplyType.TEXT else reply.type
+        new_context['session_id'] = context['session_id']
+        new_context['isgroup'] = context['isgroup']
+        new_context['receiver'] = context['receiver']
+        new_context['content'] = reply.content
+        new_context['type'] = ContextType.TEXT if reply.type == ReplyType.TEXT else reply.type
 
         wechat_channel = WechatChannel()
         wechat_channel.send(reply, new_context)
@@ -325,9 +329,13 @@ class CogView2Cow(Plugin):
                     video_url = video_result['video_result'][0]['url']
                     # 下载并发送视频
                     self.download_and_notify_video(video_url, context)
+                    # 更新任务状态
+                    self.video_tasks[task_id]['status'] = 'SUCCESS'
                     break
                 elif task_status == 'FAIL':
                     self.notify_user(context, f"视频生成失败，任务ID: {task_id}")
+                    # 更新任务状态
+                    self.video_tasks[task_id]['status'] = 'FAIL'
                     break
                 else:
                     logger.info(f"视频生成中，任务ID: {task_id}")
