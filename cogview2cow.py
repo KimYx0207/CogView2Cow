@@ -15,7 +15,7 @@ from channel.wechat.wechat_channel import WechatChannel
 @plugins.register(name="cogview2cow",
                   desc="CogView画图插件",
                   version="1.0",
-                  author="Your Name",
+                  author="KimYx 微信：xun900207（备注AI）",
                   desire_priority=100)
 class CogView2Cow(Plugin):
     # 更新后的 RATIO_MAP
