@@ -32,7 +32,6 @@
     "image_command": "智谱画图",                                                   #触发画图
     "video_command": "智谱视频",                                                   #触发视频
     "query_command": "查询进度"                                                    #触发进度查询+使用时添加ID
-    "daily_usage_limit": 5                                                        #每日限制次数
 }
 
 
