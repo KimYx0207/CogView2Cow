@@ -5,7 +5,6 @@ import os
 import threading
 import time
 from io import BytesIO
-from datetime import datetime, timedelta
 import plugins
 from plugins import *
 from bridge.context import ContextType, Context
@@ -15,8 +14,8 @@ from channel.wechat.wechat_channel import WechatChannel
 
 @plugins.register(name="cogview2cow",
                   desc="CogView画图插件",
-                  version="3.0",
-                  author="KimYx 微信：xun900207（备注AI）",
+                  version="1.0",
+                  author="Your Name",
                   desire_priority=100)
 class CogView2Cow(Plugin):
     # 更新后的 RATIO_MAP
@@ -36,8 +35,6 @@ class CogView2Cow(Plugin):
         self.task_ids = {}  # 用于存储每个用户的任务ID
         self.config_data = None
         self.video_tasks = {}  # 存储未完成的任务
-        self.user_usage = {}  # 用户使用次数记录
-        self.last_reset_date = datetime.now().date()
         if self.load_config():
             self.start_cleanup_scheduler()
         logger.info(f"[{__class__.__name__}] 初始化完成")
@@ -55,11 +52,10 @@ class CogView2Cow(Plugin):
                 if not os.path.exists(storage_path):
                     os.makedirs(storage_path)
                     logger.info(f"创建存储目录: {storage_path}")
-            # 提取触发词和每日限制
+            # 提取触发词
             self.image_command = self.config_data.get('image_command', '智谱画图')
             self.video_command = self.config_data.get('video_command', '智谱视频')
             self.query_command = self.config_data.get('query_command', '查询进度')
-            self.daily_usage_limit = int(self.config_data.get('daily_usage_limit', 5))
         else:
             logger.error(f"请先配置 {config_path} 文件")
             return False
@@ -76,17 +72,8 @@ class CogView2Cow(Plugin):
             f"2. **生成视频**：输入 \"{self.video_command} [描述]\"，例如：\n"
             f"   - `{self.video_command} 一个在公园里奔跑的女孩`\n"
             f"3. **查询视频进度**：输入 \"{self.query_command}\"，将查询您的任务状态。\n"
-            f"4. **每日使用限制**：每人每天最多使用 {self.daily_usage_limit} 次。\n"
         )
         return help_text
-
-    def reset_daily_usage(self):
-        """每日重置使用次数"""
-        now = datetime.now()
-        if self.last_reset_date < now.date():
-            self.user_usage.clear()  # 清空所有用户的使用记录
-            self.last_reset_date = now.date()
-            logger.info(f"[CogView2Cow] 已重置用户的使用次数")
 
     def on_handle_context(self, e_context: EventContext):
         if e_context['context'].type != ContextType.TEXT:
@@ -94,8 +81,6 @@ class CogView2Cow(Plugin):
         self.content = e_context["context"].content.strip()
         user_id = e_context['context']['session_id']  # 获取用户ID
         isgroup = e_context['context']['isgroup']  # 获取是否是群聊
-
-        self.reset_daily_usage()  # 重置每日使用次数
 
         if self.content.startswith(self.image_command):
             logger.info(f"[{__class__.__name__}] 收到消息: {self.content}")
@@ -113,26 +98,14 @@ class CogView2Cow(Plugin):
         if not self.load_config():
             return
 
-        # 检查用户使用次数
-        usage_count = self.user_usage.get(user_id, 0)
-        if usage_count >= self.daily_usage_limit:
-            reply = Reply()
-            reply.type = ReplyType.TEXT
-            reply.content = f"您今天的使用次数已达上限（{self.daily_usage_limit} 次）。"
-            e_context["reply"] = reply
-            e_context.action = EventAction.BREAK_PASS
-            return
-        else:
-            self.user_usage[user_id] = usage_count + 1
-
         if is_video:
-            result, enhanced_prompt = self.cogview_video(user_id)
+            result, translated_prompt = self.cogview_video(user_id)
         else:
-            result, enhanced_prompt = self.cogview2cow()
+            result, translated_prompt = self.cogview2cow()
 
         if result is not None:
-            # 在回复中包含强化后的提示词
-            reply_text = f"任务已提交。\n增强并翻译后的提示词：{enhanced_prompt}"
+            # 在回复中包含翻译后的提示词
+            reply_text = f"任务已提交。\n翻译后的提示词：{translated_prompt}"
             self.send_text_message(e_context['context'], reply_text)
             if is_video:
                 # 存储任务信息，包括上下文
@@ -161,7 +134,7 @@ class CogView2Cow(Plugin):
             e_context.action = EventAction.BREAK_PASS
 
     def handle_query(self, e_context, user_id):
-        # 您可以实现查询逻辑，例如查询用户的任务状态
+        # 实现查询逻辑，例如查询用户的任务状态
         reply = Reply()
         reply.type = ReplyType.TEXT
         reply.content = "查询功能尚未实现。"
@@ -326,7 +299,6 @@ class CogView2Cow(Plugin):
     def send_message(self, context, reply):
         # 手动复制必要的属性
         new_context = Context()
-        new_context.kwargs = context.kwargs.copy()
         new_context['session_id'] = context.get('session_id')
         new_context['isgroup'] = context.get('isgroup')
         new_context['receiver'] = context.get('receiver')
