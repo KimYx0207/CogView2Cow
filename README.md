@@ -1,9 +1,20 @@
 ## 插件说明
 基于 cogview-3-plus 提供的生图功能。地址: [[https://open.bigmodel.cn/console/trialcenter](https://open.bigmodel.cn/console/trialcenter)]，注册有2000次免费生图或视频机会。
 
+## 插件安装
+
+私聊微信机器人进行。
+```
+#installp https://github.com/KimYx0207/CogView2Cow.git
+#scanp
+
+```
+
+
 ## 插件配置
 配置目录下的 `config.json`。
 
+```
 {
     "cogview_api_key": "your_cogview_api_key",                                    #智谱API KEY
     "image_base_url": "https://open.bigmodel.cn/api/paas/v4/images/generations",  #不用改
@@ -21,3 +32,9 @@
     "video_command": "智谱视频",                                                   #触发视频
     "query_command": "查询进度"                                                    #触发进度查询+使用时添加ID
 }
+
+```
+
+
+
+![二维码基础款](https://github.com/KimYx0207/RaiseCard/assets/130755848/2a182d2c-8a43-4267-9e54-337dff85c5eb)
