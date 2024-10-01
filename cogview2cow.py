@@ -14,9 +14,9 @@ from common.log import logger
 from channel.wechat.wechat_channel import WechatChannel
 
 @plugins.register(name="cogview2cow",
-                  desc="CogView画图插件",
+                  desc="CogView画图插件（阉割版，仅进行翻译）",
                   version="1.1",
-                  author="KimYx 微信：xun900207（备注AI）",
+                  author="Your Name",
                   desire_priority=100)
 class CogView2Cow(Plugin):
     # 更新后的 RATIO_MAP
